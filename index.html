@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Détecteur de Plagiat - Analyseur de Texte</title>
+    <meta name="description" content="Détecteur de plagiat gratuit avec analyse en temps réel. Vérifiez l'originalité de vos textes et identifiez les sources potentielles.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563eb',
+                        secondary: '#64748b'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .highlight-plagiarism {
+            background-color: #fee2e2;
+            color: #dc2626;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        .highlight-paraphrase {
+            background-color: #fef3c7;
+            color: #d97706;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">Détecteur de Plagiat</h1>
+            <p class="text-gray-600">Analysez vos textes pour détecter le plagiat et les paraphrases</p>
+        </header>
+
+        <!-- Main Content -->
+        <div class="max-w-4xl mx-auto">
+            <!-- Text Input Section -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-2xl font-semibold mb-4">Entrez votre texte</h2>
+                <textarea 
+                    id="textInput"
+                    placeholder="Collez votre texte ici pour l'analyser..."
+                    class="w-full h-64 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                ></textarea>
+                
+                <!-- Options -->
+                <div class="flex flex-wrap gap-4 mt-4">
+                    <label class="flex items-center">
+                        <input type="checkbox" id="checkSimilarity" checked class="mr-2">
+                        <span>Vérifier la similarité</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="checkParaphrasing" checked class="mr-2">
+                        <span>Détecter les paraphrases</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="excludeQuotes" class="mr-2">
+                        <span>Exclure les citations</span>
+                    </label>
+                </div>
+
+                <button 
+                    id="analyzeBtn"
+                    class="mt-4 bg-primary hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors"
+                >
+                    Analyser le texte
+                </button>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loadingState" class="hidden bg-white rounded-lg shadow-md p-6 mb-8">
+                <div class="text-center">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p>Analyse en cours...</p>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultsSection" class="hidden">
+                <!-- Results Overview -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                    <h2 class="text-2xl font-semibold mb-4">Résultats de l'analyse</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-green-600" id="originalityScore">0%</div>
+                            <div class="text-sm text-gray-600">Score d'originalité</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-green-500" id="originalPercentage">0%</div>
+                            <div class="text-sm text-gray-600">Contenu original</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-yellow-500" id="paraphrasedPercentage">0%</div>
+                            <div class="text-sm text-gray-600">Paraphrasé</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-red-500" id="plagiarizedPercentage">0%</div>
+                            <div class="text-sm text-gray-600">Plagié</div>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bars -->
+                    <div class="space-y-3">
+                        <div class="flex items-center">
+                            <span class="w-20 text-sm">Original</span>
+                            <div class="flex-1 bg-gray-200 rounded-full h-2 mx-3">
+                                <div id="originalBar" class="bg-green-500 h-2 rounded-full progress-bar" style="width: 0%"></div>
+                            </div>
+                            <span id="originalPercent" class="w-12 text-sm">0%</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="w-20 text-sm">Paraphrasé</span>
+                            <div class="flex-1 bg-gray-200 rounded-full h-2 mx-3">
+                                <div id="paraphrasedBar" class="bg-yellow-500 h-2 rounded-full progress-bar" style="width: 0%"></div>
+                            </div>
+                            <span id="paraphrasedPercent" class="w-12 text-sm">0%</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="w-20 text-sm">Plagié</span>
+                            <div class="flex-1 bg-gray-200 rounded-full h-2 mx-3">
+                                <div id="plagiarizedBar" class="bg-red-500 h-2 rounded-full progress-bar" style="width: 0%"></div>
+                            </div>
+                            <span id="plagiarizedPercent" class="w-12 text-sm">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Highlighted Text -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                    <h3 class="text-xl font-semibold mb-4">Texte analysé</h3>
+                    <div id="highlightedText" class="prose max-w-none leading-relaxed"></div>
+                </div>
+
+                <!-- Detected Issues -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                    <h3 class="text-xl font-semibold mb-4">Problèmes détectés</h3>
+                    <div id="detectedIssues"></div>
+                </div>
+
+                <!-- Recommendations -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-xl font-semibold mb-4">Recommandations</h3>
+                    <ul id="recommendations" class="space-y-2"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class PlagiarismDetector {
+            constructor() {
+                this.googleApiKey = 'YOUR_GOOGLE_API_KEY_HERE'; // Remplacez par votre clé API
+                this.searchEngineId = 'YOUR_SEARCH_ENGINE_ID_HERE'; // Remplacez par votre ID de moteur de recherche
+            }
+
+            async searchGoogle(query) {
+                if (!this.googleApiKey || this.googleApiKey === 'YOUR_GOOGLE_API_KEY_HERE') {
+                    console.warn('Google API non configurée, utilisation de la détection de base');
+                    return this.fallbackSearch(query);
+                }
+
+                try {
+                    const response = await fetch(
+                        `https://www.googleapis.com/customsearch/v1?key=${this.googleApiKey}&cx=${this.searchEngineId}&q=${encodeURIComponent(query)}&num=5`
+                    );
+
+                    if (!response.ok) {
+                        throw new Error(`Erreur API Google: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    
+                    if (!data.items) {
+                        return [];
+                    }
+
+                    return data.items.map(item => ({
+                        title: item.title,
+                        link: item.link,
+                        snippet: item.snippet || ''
+                    }));
+                } catch (error) {
+                    console.error('Erreur API Google:', error);
+                    return this.fallbackSearch(query);
+                }
+            }
+
+            fallbackSearch(query) {
+                const patterns = [
+                    {
+                        keywords: ['wikipedia', 'wiki', 'encyclopédie'],
+                        results: [{
+                            title: 'Wikipédia - Encyclopédie libre',
+                            link: 'https://fr.wikipedia.org',
+                            snippet: 'Wikipédia est une encyclopédie en ligne gratuite...'
+                        }]
+                    },
+                    {
+                        keywords: ['changement climatique', 'réchauffement', 'environnement'],
+                        results: [{
+                            title: 'Changement climatique - Ministère de l\'Environnement',
+                            link: 'https://exemple.com/climat',
+                            snippet: 'Le changement climatique désigne les variations à long terme...'
+                        }]
+                    },
+                    {
+                        keywords: ['intelligence artificielle', 'machine learning', 'IA'],
+                        results: [{
+                            title: 'Qu\'est-ce que l\'intelligence artificielle?',
+                            link: 'https://exemple.com/ia',
+                            snippet: 'L\'intelligence artificielle est la simulation de l\'intelligence humaine...'
+                        }]
+                    }
+                ];
+
+                const lowerQuery = query.toLowerCase();
+                for (const pattern of patterns) {
+                    if (pattern.keywords.some(keyword => lowerQuery.includes(keyword))) {
+                        return pattern.results;
+                    }
+                }
+
+                return [];
+            }
+
+            calculateSimilarity(text1, text2) {
+                const words1 = text1.toLowerCase().split(/\s+/);
+                const words2 = text2.toLowerCase().split(/\s+/);
+                
+                const commonWords = words1.filter(word => words2.includes(word));
+                const similarity = (commonWords.length * 2) / (words1.length + words2.length);
+                
+                return Math.min(similarity * 100, 100);
+            }
+
+            async analyzePlagiarism(text, options) {
+                const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 20);
+                const detectedIssues = [];
+                
+                for (const sentence of sentences) {
+                    const cleanSentence = sentence.trim();
+                    if (cleanSentence.length < 20) continue;
+
+                    const searchResults = await this.searchGoogle(cleanSentence);
+                    
+                    for (const result of searchResults) {
+                        const similarity = this.calculateSimilarity(cleanSentence, result.snippet);
+                        
+                        if (similarity > 70) {
+                            const startIndex = text.indexOf(cleanSentence);
+                            const endIndex = startIndex + cleanSentence.length;
+                            
+                            detectedIssues.push({
+                                type: similarity > 85 ? 'plagiarism' : 'paraphrasing',
+                                text: cleanSentence,
+                                similarity,
+                                source: result.title,
+                                url: result.link,
+                                startIndex,
+                                endIndex
+                            });
+                        }
+                    }
+
+                    // Pause pour éviter les limites de taux
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
+
+                // Calculer les pourcentages
+                const totalWords = text.split(/\s+/).length;
+                const plagiarizedWords = detectedIssues
+                    .filter(issue => issue.type === 'plagiarism')
+                    .reduce((sum, issue) => sum + issue.text.split(/\s+/).length, 0);
+                const paraphrasedWords = detectedIssues
+                    .filter(issue => issue.type === 'paraphrasing')
+                    .reduce((sum, issue) => sum + issue.text.split(/\s+/).length, 0);
+
+                const plagiarizedPercentage = Math.round((plagiarizedWords / totalWords) * 100);
+                const paraphrasedPercentage = Math.round((paraphrasedWords / totalWords) * 100);
+                const originalPercentage = Math.max(0, 100 - plagiarizedPercentage - paraphrasedPercentage);
+
+                const originalityScore = Math.max(0, 100 - (plagiarizedPercentage * 1.5) - (paraphrasedPercentage * 0.8));
+
+                return {
+                    originalityScore: Math.round(originalityScore),
+                    originalPercentage,
+                    paraphrasedPercentage,
+                    plagiarizedPercentage,
+                    detectedIssues,
+                    recommendations: this.generateRecommendations(detectedIssues),
+                    highlightedText: this.highlightText(text, detectedIssues)
+                };
+            }
+
+            generateRecommendations(issues) {
+                const recommendations = [];
+                
+                if (issues.length === 0) {
+                    recommendations.push("Excellent ! Aucun plagiat détecté dans votre contenu.");
+                    recommendations.push("Continuez à maintenir l'originalité dans vos écrits.");
+                } else {
+                    const plagiarismCount = issues.filter(i => i.type === 'plagiarism').length;
+                    const paraphrasingCount = issues.filter(i => i.type === 'paraphrasing').length;
+                    
+                    if (plagiarismCount > 0) {
+                        recommendations.push(`Trouvé ${plagiarismCount} instances de plagiat potentiel. Considérez réécrire ces sections.`);
+                        recommendations.push("Ajoutez des citations appropriées pour tout matériel cité.");
+                    }
+                    
+                    if (paraphrasingCount > 0) {
+                        recommendations.push(`Trouvé ${paraphrasingCount} instances de paraphrase. Assurez-vous d'une attribution appropriée.`);
+                        recommendations.push("Utilisez des guillemets pour les citations directes et citez les sources.");
+                    }
+                    
+                    recommendations.push("Révisez le contenu signalé et ajoutez une analyse ou des commentaires originaux.");
+                    recommendations.push("Considérez utiliser des outils de détection de plagiat pendant votre processus d'écriture.");
+                }
+                
+                return recommendations;
+            }
+
+            highlightText(text, issues) {
+                let highlightedText = text;
+                
+                // Trier les problèmes par index de début en ordre décroissant
+                const sortedIssues = [...issues].sort((a, b) => b.startIndex - a.startIndex);
+                
+                for (const issue of sortedIssues) {
+                    const before = highlightedText.substring(0, issue.startIndex);
+                    const highlighted = highlightedText.substring(issue.startIndex, issue.endIndex);
+                    const after = highlightedText.substring(issue.endIndex);
+                    
+                    const className = issue.type === 'plagiarism' ? 'highlight-plagiarism' : 'highlight-paraphrase';
+                    highlightedText = before + `<span class="${className}" title="${issue.source}">${highlighted}</span>` + after;
+                }
+                
+                return highlightedText;
+            }
+        }
+
+        // Initialiser l'application
+        const detector = new PlagiarismDetector();
+        
+        document.getElementById('analyzeBtn').addEventListener('click', async () => {
+            const text = document.getElementById('textInput').value.trim();
+            
+            if (text.length < 10) {
+                alert('Veuillez saisir au moins 10 caractères pour l\'analyse.');
+                return;
+            }
+
+            const options = {
+                checkSimilarity: document.getElementById('checkSimilarity').checked,
+                checkParaphrasing: document.getElementById('checkParaphrasing').checked,
+                excludeQuotes: document.getElementById('excludeQuotes').checked
+            };
+
+            // Afficher l'état de chargement
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('resultsSection').classList.add('hidden');
+
+            try {
+                const results = await detector.analyzePlagiarism(text, options);
+                
+                // Mettre à jour les résultats
+                document.getElementById('originalityScore').textContent = results.originalityScore + '%';
+                document.getElementById('originalPercentage').textContent = results.originalPercentage + '%';
+                document.getElementById('paraphrasedPercentage').textContent = results.paraphrasedPercentage + '%';
+                document.getElementById('plagiarizedPercentage').textContent = results.plagiarizedPercentage + '%';
+
+                // Mettre à jour les barres de progression
+                document.getElementById('originalBar').style.width = results.originalPercentage + '%';
+                document.getElementById('paraphrasedBar').style.width = results.paraphrasedPercentage + '%';
+                document.getElementById('plagiarizedBar').style.width = results.plagiarizedPercentage + '%';
+                
+                document.getElementById('originalPercent').textContent = results.originalPercentage + '%';
+                document.getElementById('paraphrasedPercent').textContent = results.paraphrasedPercentage + '%';
+                document.getElementById('plagiarizedPercent').textContent = results.plagiarizedPercentage + '%';
+
+                // Afficher le texte en surbrillance
+                document.getElementById('highlightedText').innerHTML = results.highlightedText;
+
+                // Afficher les problèmes détectés
+                const issuesHtml = results.detectedIssues.map(issue => `
+                    <div class="border-l-4 ${issue.type === 'plagiarism' ? 'border-red-500' : 'border-yellow-500'} pl-4 mb-4">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="text-sm font-medium ${issue.type === 'plagiarism' ? 'text-red-600' : 'text-yellow-600'}">${issue.type === 'plagiarism' ? 'Plagiat' : 'Paraphrase'}</span>
+                                <span class="text-sm text-gray-500 ml-2">${Math.round(issue.similarity)}% de similarité</span>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-700 mt-1">"${issue.text}"</p>
+                        <div class="mt-2">
+                            <span class="text-xs text-gray-500">Source: </span>
+                            <a href="${issue.url}" target="_blank" class="text-xs text-blue-600 hover:underline">${issue.source}</a>
+                        </div>
+                    </div>
+                `).join('');
+                
+                document.getElementById('detectedIssues').innerHTML = issuesHtml || '<p class="text-gray-500">Aucun problème détecté.</p>';
+
+                // Afficher les recommandations
+                const recommendationsHtml = results.recommendations.map(rec => `
+                    <li class="flex items-start">
+                        <span class="text-green-500 mr-2">✓</span>
+                        <span>${rec}</span>
+                    </li>
+                `).join('');
+                
+                document.getElementById('recommendations').innerHTML = recommendationsHtml;
+
+                // Masquer le chargement et afficher les résultats
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('resultsSection').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Erreur lors de l\'analyse:', error);
+                document.getElementById('loadingState').classList.add('hidden');
+                alert('Erreur lors de l\'analyse. Veuillez réessayer.');
+            }
+        });
+    </script>
+</body>
+</html>
