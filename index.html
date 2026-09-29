@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Détecteur de Plagiat AI (Groq)</title>
+    <title>Détecteur de Texte AI (Groq)</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -24,7 +25,7 @@
         }
 
         .container {
-            max-width: 900px;
+            max-width: 800px;
             width: 100%;
             background: var(--card-bg);
             padding: 30px;
@@ -38,22 +39,10 @@
             color: #60a5fa;
         }
 
-        .grid-inputs {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        @media (max-width: 768px) {
-            .grid-inputs {
-                grid-template-columns: 1fr;
-            }
-        }
-
         .input-group {
             display: flex;
             flex-direction: column;
+            margin-bottom: 20px;
         }
 
         label {
@@ -64,7 +53,7 @@
 
         textarea {
             width: 100%;
-            height: 250px;
+            height: 200px;
             background-color: #0f172a;
             border: 1px solid var(--border-color);
             color: var(--text-color);
@@ -117,12 +106,34 @@
             margin-bottom: 15px;
             border-bottom: 1px solid var(--border-color);
             padding-bottom: 8px;
+            color: #60a5fa;
         }
 
         .analysis-text {
-            white-space: pre-wrap;
             line-height: 1.6;
             color: #e2e8f0;
+        }
+
+        /* Styles pour que le rendu Markdown soit propre */
+        .analysis-text h2, .analysis-text h3 {
+            color: #93c5fd;
+            margin-top: 15px;
+        }
+
+        .analysis-text table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        .analysis-text th, .analysis-text td {
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .analysis-text th {
+            background-color: #1e293b;
         }
 
         .loader {
@@ -137,24 +148,18 @@
 <body>
 
 <div class="container">
-    <h1>Analyseur de Plagiat AI</h1>
+    <h1>Détecteur de Contenu AI</h1>
     
-    <div class="grid-inputs">
-        <div class="input-group">
-            <label for="originalText">Texte de Référence (Original) :</label>
-            <textarea id="originalText" placeholder="Collez le texte source ou original ici..."></textarea>
-        </div>
-        <div class="input-group">
-            <label for="suspectText">Texte à Analyser (Suspect) :</label>
-            <textarea id="suspectText" placeholder="Collez le texte à vérifier ici..."></textarea>
-        </div>
+    <div class="input-group">
+        <label for="textToAnalyze">Collez le texte à analyser :</label>
+        <textarea id="textToAnalyze" placeholder="Insérez votre texte ici..."></textarea>
     </div>
 
-    <button id="analyzeBtn" onclick="analyzePlagiarism()">Lancer l'Analyse</button>
-    <div id="loader" class="loader">Analyse en cours par le modèle Groq... Veuillez patienter.</div>
+    <button id="analyzeBtn" onclick="analyzeText()">Analyser le texte</button>
+    <div id="loader" class="loader">Analyse en cours... Veuillez patienter.</div>
 
     <div id="result-box">
-        <div class="result-header">Rapport d'Analyse :</div>
+        <div class="result-header">Résultat de l'analyse :</div>
         <div id="analysisResult" class="analysis-text"></div>
     </div>
 </div>
@@ -163,40 +168,33 @@
     const GROQ_API_KEY = "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";
     const MODEL_NAME = "openai/gpt-oss-120b";
 
-    async function analyzePlagiarism() {
-        const originalText = document.getElementById("originalText").value.trim();
-        const suspectText = document.getElementById("suspectText").value.trim();
+    async function analyzeText() {
+        const textToAnalyze = document.getElementById("textToAnalyze").value.trim();
         const analyzeBtn = document.getElementById("analyzeBtn");
         const loader = document.getElementById("loader");
         const resultBox = document.getElementById("result-box");
         const analysisResult = document.getElementById("analysisResult");
 
-        if (!originalText || !suspectText) {
-            alert("Veuillez remplir les deux champs de texte avant de lancer l'analyse.");
+        if (!textToAnalyze) {
+            alert("Veuillez coller un texte à analyser.");
             return;
         }
 
-        // Interface state: loading
         analyzeBtn.disabled = true;
         loader.style.display = "block";
         resultBox.style.display = "none";
-        analysisResult.innerText = "";
+        analysisResult.innerHTML = "";
 
         const prompt = `
-Tu es un expert en détection de plagiat et d'analyse linguistique.
-Compare les deux textes suivants :
+Tu es un outil d'analyse de texte. Réponds de façon directe, claire et naturelle, sans ton scolaire ou robotique.
+Analyse ce texte :
 
-[TEXTE DE RÉFÉRENCE / ORIGINAL] :
-${originalText}
+"${textToAnalyze}"
 
-[TEXTE À ANALYSER / SUSPECT] :
-${suspectText}
-
-Fournis une analyse détaillée en français structurée de la manière suivante :
-1. **Taux de similarité estimé** : Donner un pourcentage global (ex: 0-100%).
-2. **Type de plagiat identifié** : Indiquer s'il s'agit de copier-coller direct, de reformulation/paraphrase proche, ou si les textes sont indépendants.
-3. **Passages similaires / Identiques** : Citer les phrases ou extraits suspects.
-4. **Conclusion et Recommandations** : Un bref résumé de l'évaluation.
+Fournis ton retour ainsi :
+1. Score estimé : Donne un pourcentage de chance que ce soit écrit par une IA.
+2. Points clés : Explique rapidement (style, vocabulaire, répétitions ou anecdotes) pourquoi tu donnes ce score.
+3. Verdict : Une phrase simple et tranchée (Ex: "Texte 100% humain", "Clairement généré par IA", etc.).
         `;
 
         try {
@@ -214,23 +212,23 @@ Fournis une analyse détaillée en français structurée de la manière suivante
                             content: prompt
                         }
                     ],
-                    temperature: 0.2
+                    temperature: 0.3
                 })
             });
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error?.message || "Erreur de communication avec l'API Groq.");
+                throw new Error(errorData.error?.message || "Erreur lors de la requête.");
             }
 
             const data = await response.json();
             const reply = data.choices[0].message.content;
 
-            analysisResult.innerText = reply;
+            analysisResult.innerHTML = marked.parse(reply);
             resultBox.style.display = "block";
 
         } catch (error) {
-            alert("Une erreur s'est produite : " + error.message);
+            alert("Erreur : " + error.message);
         } finally {
             analyzeBtn.disabled = false;
             loader.style.display = "none";
